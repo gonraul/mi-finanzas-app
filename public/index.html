@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registrar Movimiento</title>
+    <link rel="stylesheet" href="css/estilos.css">
+    <script type="module" src="js/firebase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Nuevo Movimiento</h1>
+        <form id="formulario">
+            <select id="tipo" required>
+                <option value="">Seleccionar tipo</option>
+                <option value="ingreso">Ingreso</option>
+                <option value="gasto">Gasto</option>
+            </select>
+
+            <input type="text" id="descripcion" placeholder="Descripción" required>
+            <input type="number" id="monto" placeholder="Monto" required>
+
+            <button type="submit">Guardar</button>
+        </form>
+
+        <div id="spinner" style="display:none; text-align: center; margin-top: 10px;">
+            <div class="loader"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './js/firebase-config.js';
+        import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-lite.js";
+
+        const form = document.getElementById('formulario');
+        const spinner = document.getElementById('spinner');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const tipo = document.getElementById('tipo').value;
+            const descripcion = document.getElementById('descripcion').value;
+            const monto = parseFloat(document.getElementById('monto').value);
+
+            if (!tipo || !descripcion || isNaN(monto)) {
+                Swal.fire('Error', 'Por favor completa todos los campos correctamente.', 'error');
+                return;
+            }
+
+            spinner.style.display = 'block';
+
+            try {
+                const now = new Date();
+                const mesAnio = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+                await addDoc(collection(db, "finanzas"), {
+                    tipo,
+                    descripcion,
+                    monto,
+                    fecha: serverTimestamp(),
+                    mesAnio: mesAnio
+                });
+
+                spinner.style.display = 'none';
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Guardado',
+                    text: 'El movimiento fue registrado exitosamente!',
+                    confirmButtonText: 'Ver gráficos'
+                }).then(() => {
+                    window.location.href = 'graficos.html';
+                });
+
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                spinner.style.display = 'none';
+                Swal.fire('Error', 'No se pudo guardar el movimiento.', 'error');
+            }
+        });
+    </script>
+</body>
+
+</html>

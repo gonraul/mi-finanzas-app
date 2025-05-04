@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gráficos de Finanzas</title>
+    <link rel="stylesheet" href="css/estilos.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="js/firebase-config.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Resumen Financiero</h1>
+
+        <div class="selector-mes">
+            <label for="meses">Seleccionar mes:</label>
+            <select id="meses"></select>
+        </div>
+
+        <canvas id="donaChart" width="400" height="400"></canvas>
+    </div>
+
+    <script type="module">
+        import { db } from './js/firebase-config.js';
+        import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-lite.js";
+
+        const ctx = document.getElementById('donaChart').getContext('2d');
+        const selectMeses = document.getElementById('meses');
+        let movimientos = [];
+
+        let chart; // referencia al gráfico
+
+        async function cargarDatos() {
+            const finanzasCol = collection(db, "finanzas");
+            const snapshot = await getDocs(finanzasCol);
+
+            movimientos = [];
+
+            snapshot.forEach((doc) => {
+                movimientos.push(doc.data());
+            });
+
+            cargarMeses();
+            actualizarGrafico();
+        }
+
+        function cargarMeses() {
+            const mesesUnicos = [...new Set(movimientos.map(m => m.mesAnio))].sort().reverse();
+
+            selectMeses.innerHTML = '';
+            mesesUnicos.forEach(mes => {
+                const option = document.createElement('option');
+                option.value = mes;
+                option.textContent = mes;
+                selectMeses.appendChild(option);
+            });
+        }
+
+        function actualizarGrafico() {
+            const mesSeleccionado = selectMeses.value;
+            let ingresos = 0;
+            let gastos = 0;
+
+            movimientos.forEach(mov => {
+                if (mov.mesAnio === mesSeleccionado) {
+                    if (mov.tipo === "ingreso") {
+                        ingresos += mov.monto;
+                    } else if (mov.tipo === "gasto") {
+                        gastos += mov.monto;
+                    }
+                }
+            });
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ingresos', 'Gastos'],
+                    datasets: [{
+                        data: [ingresos, gastos],
+                        backgroundColor: ['rgba(75, 192, 192, 0.7)', 'rgba(255, 99, 132, 0.7)'],
+                        borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: `Balance del Mes ${mesSeleccionado}`,
+                            font: {
+                                size: 24
+                            }
+                        }
+                    },
+                    animation: {
+                        animateScale: true
+                    }
+                }
+            });
+        }
+
+        selectMeses.addEventListener('change', actualizarGrafico);
+
+        cargarDatos();
+    </script>
+</body>
+
+</html>

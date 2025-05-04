@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Registrar Movimiento</title>
+    <title>Registro de Movimientos</title>
     <link rel="stylesheet" href="css/estilos.css">
     <script type="module" src="js/firebase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -19,12 +19,32 @@
                 <option value="ingreso">Ingreso</option>
                 <option value="gasto">Gasto</option>
             </select>
-
-            <input type="text" id="descripcion" placeholder="Descripción" required>
+            <select id="descripcion" required>
+                <option value="">Seleccionar descripción</option>
+                <optgroup label="Ingresos">
+                    <option value="SUELDO">SUELDO</option>
+                    <option value="CAIE">CAIE</option>
+                    <option value="PAT">PAT</option>
+                    <option value="PLANOS">PLANOS</option>
+                    <option value="OTROS">OTROS</option>
+                </optgroup>
+                <optgroup label="Gastos">
+                    <option value="PLANOS">PLANOS</option>
+                    <option value="IMP. CAIE">IMP. CAIE</option>
+                    <option value="ALIMENTO">ALIMENTO</option>
+                    <option value="AUTOS">AUTOS</option>
+                    <option value="CREDITO">CREDITO</option>
+                    <option value="ALQUILER">ALQUILER</option>
+                    <option value="IMPUESTOS">IMPUESTOS</option>
+                    <option value="OTROS">OTROS</option>
+                </optgroup>
+            </select>
+            <textarea id="observaciones" placeholder="Observaciones" style="display: none;"></textarea>
             <input type="number" id="monto" placeholder="Monto" required>
-
             <button type="submit">Guardar</button>
         </form>
+
+
 
         <div id="spinner" style="display:none; text-align: center; margin-top: 10px;">
             <div class="loader"></div>
@@ -37,7 +57,21 @@
 
         const form = document.getElementById('formulario');
         const spinner = document.getElementById('spinner');
+        const descripcionSelect = document.getElementById('descripcion');
+        const observacionesTextarea = document.getElementById('observaciones');
 
+        // Ocultar/mostrar el textarea de observaciones
+        descripcionSelect.addEventListener('change', () => {
+            const selectedValue = descripcionSelect.value;
+            if (selectedValue === 'OTROS') {
+                observacionesTextarea.style.display = 'block';
+            } else {
+                observacionesTextarea.style.display = 'none';
+            }
+        });
+
+        
+        
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -60,7 +94,9 @@
                     tipo,
                     descripcion,
                     monto,
+
                     fecha: serverTimestamp(),
+
                     mesAnio: mesAnio
                 });
 

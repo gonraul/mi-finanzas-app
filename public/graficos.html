@@ -4,29 +4,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gráficos de Finanzas</title>
+    <title>Gráficos de Finanzas Personales</title>
     <link rel="stylesheet" href="css/estilos.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="js/firebase-config.js"></script>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Resumen Financiero</h1>
+     <div class="container">
+        <h1>Resumen Financiero Mensual</h1>
 
         <div class="selector-mes">
-            <label for="meses">Seleccionar mes:</label>
+            <label for="meses">Seleccione un mes:</label>
             <select id="meses"></select>
         </div>
 
-        <canvas id="donaChart" width="400" height="400"></canvas>
+         <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+             <canvas id="donaChart" width="400" height="400"></canvas>
+        </div>
+        <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+             <canvas id="donaChartIngresos" width="400" height="400"></canvas>
+            <canvas id="donaChartGastos" width="400" height="400"></canvas>
+        </div>
     </div>
 
     <script type="module">
         import { db } from './js/firebase-config.js';
         import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-lite.js";
 
-        const ctx = document.getElementById('donaChart').getContext('2d');
+        const ctxBalance = document.getElementById('donaChart').getContext('2d');
         const selectMeses = document.getElementById('meses');
         let movimientos = [];
 
@@ -46,16 +52,40 @@
             actualizarGrafico();
         }
 
+        function getCurrentMonthYear() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}`;
+        }
+
         function cargarMeses() {
             const mesesUnicos = [...new Set(movimientos.map(m => m.mesAnio))].sort().reverse();
 
             selectMeses.innerHTML = '';
+            const currentMonthYear = getCurrentMonthYear();
             mesesUnicos.forEach(mes => {
                 const option = document.createElement('option');
                 option.value = mes;
                 option.textContent = mes;
                 selectMeses.appendChild(option);
             });
+             selectMeses.value = currentMonthYear;
+        }
+
+         function calcularPorcentaje(valor, total) {
+            if (total === 0) {
+                return 0; // Evitar división por cero
+            }
+            return ((valor / total) * 100).toFixed(2);
+        }
+        
+        function actualizarGraficosDescriptivos(mesSeleccionado) {
+             const movimientosFiltrados = movimientos.filter(mov => mov.mesAnio === mesSeleccionado);
+             const ctxIngresos = document.getElementById('donaChartIngresos').getContext('2d');
+             const ctxGastos = document.getElementById('donaChartGastos').getContext('2d');
+            generarGraficoDescriptivo(ctxIngresos, movimientosFiltrados.filter(mov => mov.tipo === "ingreso"), "Ingresos");
+            generarGraficoDescriptivo(ctxGastos, movimientosFiltrados.filter(mov => mov.tipo === "gasto"), "Gastos");
         }
 
         function actualizarGrafico() {
@@ -77,7 +107,7 @@
                 chart.destroy();
             }
 
-            chart = new Chart(ctx, {
+            chart = new Chart(ctxBalance, {
                 type: 'doughnut',
                 data: {
                     labels: ['Ingresos', 'Gastos'],
@@ -96,7 +126,7 @@
                         },
                         title: {
                             display: true,
-                            text: `Balance del Mes ${mesSeleccionado}`,
+                            text: `Balance Mensual ${mesSeleccionado}`,
                             font: {
                                 size: 24
                             }
@@ -104,6 +134,47 @@
                     },
                     animation: {
                         animateScale: true
+                    }
+                }
+            });
+              actualizarGraficosDescriptivos(mesSeleccionado);
+        }
+
+         function generarGraficoDescriptivo(ctx, movimientos, tipo) {
+            const descripciones = {};
+            let total = 0;
+            movimientos.forEach(mov => {
+                descripciones[mov.descripcion] = (descripciones[mov.descripcion] || 0) + mov.monto;
+                total += mov.monto;
+            });
+            const labels = Object.keys(descripciones);
+            const data = labels.map(label => descripciones[label]);
+            const porcentajes = data.map(valor => calcularPorcentaje(valor, total));
+            const dataWithPercentage = data.map((valor, index) => `${labels[index]} (${porcentajes[index]}%)`);
+            if(descripciones.length == 0){
+                 const canvas = ctx.canvas;
+                 canvas.width = 0;
+                canvas.height = 0;
+                return
+            }
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: dataWithPercentage,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: Array.from({ length: data.length }, () => `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.7)`),
+                        borderColor: Array.from({ length: data.length }, () => `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 1)`),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Detalle de ${tipo}`
+                        }
                     }
                 }
             });
